@@ -1,3 +1,5 @@
+[![tests](https://github.com/adel-s/frigate-auth-mcp/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/adel-s/frigate-auth-mcp/actions/workflows/tests.yml)
+
 # frigate-auth-mcp
 
 ## What
@@ -87,6 +89,17 @@ deserves. This server gives the assistant eyes, not hands.
 - Without `after`, Frigate's `/api/review` returns only the last 24 hours; `list_reviews` asks for the last 7 days
   instead, so "what happened this week" gets a full answer.
 - `list_events` with `has_description` filters on the GenAI description, which the Frigate API cannot do itself.
+
+## Tests
+
+```sh
+uv run python -m unittest discover -s tests
+```
+
+The tests use `unittest` and a fake Frigate API on `httpx.MockTransport`, so they need no running Frigate. They
+also check that no tool sends anything but `GET`, apart from the login.
+
+GitHub Actions runs them on Python 3.11 to 3.14 on each push to `master` and `dev/*` branches.
 
 ## Development
 
