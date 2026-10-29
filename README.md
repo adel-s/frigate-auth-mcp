@@ -3,6 +3,8 @@
 
 # frigate-auth-mcp
 
+<!-- mcp-name: io.github.adel-s/frigate-auth-mcp -->
+
 ## What
 
 An [MCP](https://modelcontextprotocol.io) server with authentication for [Frigate NVR](https://frigate.video): lets an AI
@@ -15,11 +17,13 @@ assistant may see. Tested with Frigate 0.17.x.
 ## Install
 
 Python 3.11+ and [uv](https://docs.astral.sh/uv/). Nothing to install by hand: the MCP client starts the server
-with
+from [PyPI](https://pypi.org/project/frigate-auth-mcp/) with
 
 ```
-uvx --from git+https://github.com/adel-s/frigate-auth-mcp frigate-auth-mcp
+uvx frigate-auth-mcp
 ```
+
+The latest code from GitHub runs with `uvx --from git+https://github.com/adel-s/frigate-auth-mcp frigate-auth-mcp`.
 
 ## Setup
 
@@ -32,7 +36,7 @@ uvx --from git+https://github.com/adel-s/frigate-auth-mcp frigate-auth-mcp
   "mcpServers": {
     "frigate": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/adel-s/frigate-auth-mcp", "frigate-auth-mcp"],
+      "args": ["frigate-auth-mcp"],
       "env": {
         "FRIGATE_URL": "https://frigate.example.com:8971",
         "FRIGATE_USER": "assistant",

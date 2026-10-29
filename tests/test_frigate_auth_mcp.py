@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import tomllib
 import unittest
 from datetime import datetime, timezone
 from unittest import mock
@@ -183,6 +184,24 @@ class StatusTest(ServerTestCase):
         self.assertEqual(status["allowed_cameras"], ["terrace"])
         self.assertEqual(status["cameras"]["terrace"]["camera_fps"], 5.0)
 
+
+
+class ReleaseMetadataTest(unittest.TestCase):
+    def test_versions_match(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "pyproject.toml"), "rb") as f:
+            version = tomllib.load(f)["project"]["version"]
+        with open(os.path.join(root, "server.json")) as f:
+            server = json.load(f)
+        self.assertEqual(server["version"], version)
+        self.assertEqual([p["version"] for p in server["packages"]], [version])
+
+    def test_readme_names_the_registry_server(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "server.json")) as f:
+            name = json.load(f)["name"]
+        with open(os.path.join(root, "README.md")) as f:
+            self.assertIn(f"<!-- mcp-name: {name} -->", f.read())
 
 if __name__ == "__main__":
     unittest.main()

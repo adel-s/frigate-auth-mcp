@@ -1,0 +1,53 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.adel-s/frigate-auth-mcp",
+  "title": "Frigate Auth",
+  "description": "MCP server with authentication for Frigate NVR (authenticated port, viewer role)",
+  "repository": {
+    "url": "https://github.com/adel-s/frigate-auth-mcp",
+    "source": "github"
+  },
+  "version": "0.1.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "frigate-auth-mcp",
+      "version": "0.1.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "FRIGATE_URL",
+          "description": "Base URL of the authenticated Frigate port",
+          "default": "http://localhost:8971",
+          "isRequired": false
+        },
+        {
+          "name": "FRIGATE_USER",
+          "description": "Frigate username with the viewer role",
+          "isRequired": true
+        },
+        {
+          "name": "FRIGATE_PASSWD",
+          "description": "Password of the Frigate user",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "FRIGATE_IMAGE_CAMERAS",
+          "description": "Cameras allowed to return images, comma-separated; default all",
+          "isRequired": false
+        },
+        {
+          "name": "FRIGATE_TIMEOUT",
+          "description": "Seconds per request",
+          "default": "30",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
