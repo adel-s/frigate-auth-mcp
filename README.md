@@ -1,4 +1,5 @@
 [![tests](https://github.com/adel-s/frigate-auth-mcp/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/adel-s/frigate-auth-mcp/actions/workflows/tests.yml)
+[![publish](https://github.com/adel-s/frigate-auth-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/adel-s/frigate-auth-mcp/actions/workflows/publish.yml)
 
 # frigate-auth-mcp
 
