@@ -108,8 +108,7 @@ GitHub Actions runs them on Python 3.11 to 3.14 on each push to `master` and `de
 
 ## Development
 
-I don't accept pull requests, sorry: my code, my rules. But if something doesn't work or you need a new feature,
-feel free to open an issue and I'll fix it ASAP.
+If something doesn't work or you need a new feature feel free to open an issue and I'll fix it ASAP!
 
 ## License
 
