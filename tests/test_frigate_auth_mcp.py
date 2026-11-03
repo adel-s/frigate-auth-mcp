@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -24,11 +25,15 @@ class FakeFrigate:
     def __init__(self, token_valid=True):
         self.requests = []
         self.token_valid = token_valid
+        self.login_ok = True
+        self.missing_event = False
 
     def __call__(self, request):
         self.requests.append(request)
         path = request.url.path
         if path == "/api/login":
+            if not self.login_ok:
+                return httpx.Response(401, json={"message": "bad credentials"})
             self.token_valid = True
             return httpx.Response(200, json={}, headers={"set-cookie": "frigate_token=jwt; Path=/"})
         if not self.token_valid:
@@ -38,6 +43,8 @@ class FakeFrigate:
         if path.startswith("/api/events/") and path.endswith("/snapshot.jpg"):
             return httpx.Response(200, content=JPEG)
         if path.startswith("/api/events/"):
+            if self.missing_event:
+                return httpx.Response(404, json={"message": "Event not found"})
             return httpx.Response(200, json=EVENT)
         if path.endswith("/latest.jpg"):
             return httpx.Response(200, content=JPEG)
@@ -140,9 +147,48 @@ class EventsTest(ServerTestCase):
         self.assertNotIn("after", params)
 
 
+class ErrorsTest(ServerTestCase):
+    def test_not_found_is_clear_and_hides_host(self):
+        self.frigate.missing_event = True
+        with self.assertRaises(RuntimeError) as ctx:
+            server.get_event("gone")
+        self.assertIn("no such object: /api/events/gone", str(ctx.exception))
+        self.assertNotIn("frigate.test", str(ctx.exception))
+
+    def test_rejected_login(self):
+        self.frigate.token_valid = False
+        self.frigate.login_ok = False
+        with self.assertRaisesRegex(RuntimeError, "rejected the login"):
+            server.get_event("x")
+
+    def test_unreachable(self):
+        def down(request):
+            raise httpx.ConnectError("connection refused")
+        with mock.patch.object(server, "_client", httpx.Client(base_url="http://frigate.test:8971",
+                                                               transport=httpx.MockTransport(down))):
+            with self.assertRaisesRegex(RuntimeError, "Frigate is unreachable"):
+                server.get_event("x")
+
+
+class AnnotationsTest(unittest.TestCase):
+    def test_every_tool_is_read_only(self):
+        tools = asyncio.run(server.mcp.list_tools())
+        self.assertEqual(len(tools), 7)
+        for tool in tools:
+            self.assertTrue(tool.annotations.readOnlyHint, tool.name)
+            self.assertFalse(tool.annotations.destructiveHint, tool.name)
+
+
 class ImagesTest(ServerTestCase):
     def test_frame_returned(self):
         self.assertEqual(server.latest_frame("terrace").data, JPEG)
+
+    def test_small_images_by_default(self):
+        server.latest_frame("terrace")
+        server.event_snapshot("x")
+        for path in ("/api/terrace/latest.jpg", "/api/events/x/snapshot.jpg"):
+            params = self.frigate.params(path)[0]
+            self.assertEqual((params["height"], params["quality"]), ("480", "70"), path)
 
     def test_filter_refuses_other_cameras(self):
         with mock.patch.object(server, "IMAGE_CAMERAS", {"street"}):

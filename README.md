@@ -51,15 +51,15 @@ Keep the password out of the file: put it in the environment the client runs in.
 
 ## Tools
 
-| Tool             | What it returns                                                          | Frigate API                                  |
-|------------------|--------------------------------------------------------------------------|----------------------------------------------|
-| `frigate_status` | version, uptime, the cameras this user may see, per-camera fps           | `/api/stats`, `/api/profile`, `/api/version` |
-| `list_events`    | tracked-object events, filters by camera, label, time, GenAI description | `/api/events`                                |
-| `get_event`      | one event in detail, with its GenAI description                          | `/api/events/<id>`                           |
-| `event_snapshot` | snapshot of an event with the bounding box, optionally cropped           | `/api/events/<id>/snapshot.jpg`              |
-| `latest_frame`   | the current frame of a camera                                            | `/api/<camera>/latest.jpg`                   |
-| `list_reviews`   | review items as in the Frigate UI, last 7 days by default                | `/api/review`                                |
-| `review_summary` | alert and detection counts for the last 24 hours and per day             | `/api/review/summary`                        |
+| Tool             | What it returns                                                                               | Frigate API                                  |
+|------------------|-----------------------------------------------------------------------------------------------|----------------------------------------------|
+| `frigate_status` | version, uptime, the cameras this user may see, per-camera fps                                | `/api/stats`, `/api/profile`, `/api/version` |
+| `list_events`    | tracked-object events, filters by camera, label, time, GenAI description                      | `/api/events`                                |
+| `get_event`      | one event in detail, with its GenAI description                                               | `/api/events/<id>`                           |
+| `event_snapshot` | snapshot of an event with the bounding box, optionally cropped; 480 px, quality 70 by default | `/api/events/<id>/snapshot.jpg`              |
+| `latest_frame`   | the current frame of a camera; 480 px, quality 70 by default                                  | `/api/<camera>/latest.jpg`                   |
+| `list_reviews`   | review items as in the Frigate UI, last 7 days by default                                     | `/api/review`                                |
+| `review_summary` | alert and detection counts for the last 24 hours and per day                                  | `/api/review/summary`                        |
 
 ## Environment
 
@@ -77,6 +77,8 @@ Keep the password out of the file: put it in the environment the client runs in.
   which gives full API access to anyone who can reach it.
 - Logs in as a Frigate user with the role `viewer`; the only non-GET call is `POST /api/login`.
 - No tool deletes, exports, edits the config or restarts anything.
+- Every tool carries the MCP annotations `readOnlyHint: true` and `destructiveHint: false`, so clients can tell
+  that the server only reads.
 - The raw Frigate config is not exposed: it carries camera stream URLs with credentials.
 - Optional image filter `FRIGATE_IMAGE_CAMERAS`: only these cameras return images (snapshots, frames). This is the
   second layer of protection, after the camera limit of the Frigate user's role; by default all cameras are
@@ -94,6 +96,10 @@ deserves. This server gives the assistant eyes, not hands.
 - Without `after`, Frigate's `/api/review` returns only the last 24 hours; `list_reviews` asks for the last 7 days
   instead, so "what happened this week" gets a full answer.
 - `list_events` with `has_description` filters on the GenAI description, which the Frigate API cannot do itself.
+- Images default to 480 px and JPEG quality 70 to keep the model's context small; `height` and `quality` raise
+  them when a detail is too small to see.
+- Errors come back as short plain messages (object not found, login rejected, access denied, Frigate unreachable)
+  without the internal Frigate host name.
 
 ## Tests
 
