@@ -76,6 +76,8 @@ class ServerTestCase(unittest.TestCase):
         patches = [
             mock.patch.object(server, "_client", client),
             mock.patch.object(server, "IMAGE_CAMERAS", set()),
+            mock.patch.object(server, "IMAGE_MAX_HEIGHT", None),
+            mock.patch.object(server, "IMAGE_MAX_QUALITY", None),
             mock.patch.dict(os.environ, {"FRIGATE_USER": "assistant", "FRIGATE_PASSWD": "secret"}),
         ]
         for p in patches:
@@ -190,6 +192,39 @@ class ImagesTest(ServerTestCase):
             params = self.frigate.params(path)[0]
             self.assertEqual((params["height"], params["quality"]), ("480", "70"), path)
 
+    def test_larger_images_when_asked_and_no_limit(self):
+        server.latest_frame("terrace", height=720, quality=85)
+        params = self.frigate.params("/api/terrace/latest.jpg")[0]
+        self.assertEqual((params["height"], params["quality"]), ("720", "85"))
+
+    def test_limits_lower_what_the_model_asks(self):
+        with mock.patch.multiple(server, IMAGE_MAX_HEIGHT=480, IMAGE_MAX_QUALITY=70):
+            server.latest_frame("terrace", height=720, quality=85)
+            server.event_snapshot("x", height=1080, quality=100)
+        for path in ("/api/terrace/latest.jpg", "/api/events/x/snapshot.jpg"):
+            params = self.frigate.params(path)[0]
+            self.assertEqual((params["height"], params["quality"]), ("480", "70"), path)
+
+    def test_limits_keep_smaller_requests(self):
+        with mock.patch.multiple(server, IMAGE_MAX_HEIGHT=480, IMAGE_MAX_QUALITY=70):
+            server.latest_frame("terrace", height=240, quality=50)
+        params = self.frigate.params("/api/terrace/latest.jpg")[0]
+        self.assertEqual((params["height"], params["quality"]), ("240", "50"))
+
+    def test_quality_stays_in_jpeg_range(self):
+        server.latest_frame("terrace", height=0, quality=500)
+        params = self.frigate.params("/api/terrace/latest.jpg")[0]
+        self.assertEqual((params["height"], params["quality"]), ("1", "100"))
+
+    def test_limit_from_environment(self):
+        with mock.patch.dict(os.environ, {"FRIGATE_IMAGE_MAX_HEIGHT": " 360 ", "FRIGATE_IMAGE_MAX_QUALITY": ""}):
+            self.assertEqual(server._limit("FRIGATE_IMAGE_MAX_HEIGHT"), 360)
+            self.assertIsNone(server._limit("FRIGATE_IMAGE_MAX_QUALITY"))
+        for bad in ("0", "-5", "big"):
+            with mock.patch.dict(os.environ, {"FRIGATE_IMAGE_MAX_HEIGHT": bad}):
+                with self.assertRaises(ValueError):
+                    server._limit("FRIGATE_IMAGE_MAX_HEIGHT")
+
     def test_filter_refuses_other_cameras(self):
         with mock.patch.object(server, "IMAGE_CAMERAS", {"street"}):
             with self.assertRaises(ValueError):
@@ -241,6 +276,15 @@ class ReleaseMetadataTest(unittest.TestCase):
             server = json.load(f)
         self.assertEqual(server["version"], version)
         self.assertEqual([p["version"] for p in server["packages"]], [version])
+        with open(os.path.join(root, "skills", "frigate-cameras", "SKILL.md")) as f:
+            self.assertIn(f"\nversion: {version}\n", f.read())
+
+    def test_skill_frontmatter(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "skills", "frigate-cameras", "SKILL.md")) as f:
+            head = f.read().split("---\n")[1]
+        self.assertIn("name: frigate-cameras\n", head)
+        self.assertRegex(head, r"description: \".{20,1024}\"\n")
 
     def test_readme_names_the_registry_server(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
