@@ -12,6 +12,9 @@ Environment:
     FRIGATE_IMAGE_CAMERAS  comma-separated cameras whose IMAGES may be returned (snapshots, frames);
                         unset or empty = all. Text data (events, reviews) is not affected. Use it when the
                         MCP client sends images to a third-party model and indoor frames must not leave home.
+    FRIGATE_IMAGE_MAX_HEIGHT   upper limit for the `height` of returned images, in pixels; unset = no limit.
+    FRIGATE_IMAGE_MAX_QUALITY  upper limit for the JPEG `quality` (1-100); unset = no limit. A larger value
+                        asked by the model is lowered to the limit, so the client controls the image size.
 """
 
 import logging
@@ -25,6 +28,19 @@ from mcp.types import ToolAnnotations
 URL = os.environ.get("FRIGATE_URL", "http://localhost:8971").rstrip("/")
 TIMEOUT = float(os.environ.get("FRIGATE_TIMEOUT", "30"))
 IMAGE_CAMERAS = {c.strip() for c in os.environ.get("FRIGATE_IMAGE_CAMERAS", "").split(",") if c.strip()}
+
+
+def _limit(name):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return None
+    if not value.isdigit() or int(value) < 1:
+        raise ValueError(f"{name} must be a positive integer, got '{value}'")
+    return int(value)
+
+
+IMAGE_MAX_HEIGHT = _limit("FRIGATE_IMAGE_MAX_HEIGHT")
+IMAGE_MAX_QUALITY = _limit("FRIGATE_IMAGE_MAX_QUALITY")
 
 mcp = FastMCP("frigate")
 # Every tool only reads Frigate: clients may treat them as safe to call without confirmation
@@ -77,6 +93,16 @@ def _get(path, params=None):
 def _image_allowed(camera):
     if IMAGE_CAMERAS and camera not in IMAGE_CAMERAS:
         raise ValueError(f"Images from camera '{camera}' are disabled for this client (FRIGATE_IMAGE_CAMERAS)")
+
+
+def _image_params(height, quality):
+    # The model picks height/quality; the limits from the environment have the last word
+    height, quality = max(1, int(height)), min(max(1, int(quality)), 100)
+    if IMAGE_MAX_HEIGHT:
+        height = min(height, IMAGE_MAX_HEIGHT)
+    if IMAGE_MAX_QUALITY:
+        quality = min(quality, IMAGE_MAX_QUALITY)
+    return {"height": height, "quality": quality}
 
 
 def _ts(value):
@@ -151,19 +177,20 @@ def get_event(event_id: str) -> dict:
 @mcp.tool(annotations=READ_ONLY)
 def event_snapshot(event_id: str, crop: bool = True, height: int = 480, quality: int = 70) -> Image:
     """Snapshot of an event with its bounding box; crop=True zooms on the object.
-    height/quality keep the image small; raise them only when a detail is too small to see."""
+    Keep the default height/quality; raise them only when the user needs a detail that is too small to see.
+    The server may cap both."""
     _image_allowed(_get(f"/api/events/{event_id}").json()["camera"])
     r = _get(f"/api/events/{event_id}/snapshot.jpg",
-             {"bbox": 1, "crop": int(crop), "height": height, "quality": quality})
+             {"bbox": 1, "crop": int(crop), **_image_params(height, quality)})
     return Image(data=r.content, format="jpeg")
 
 
 @mcp.tool(annotations=READ_ONLY)
 def latest_frame(camera: str, height: int = 480, quality: int = 70) -> Image:
-    """The current frame of a camera. height/quality keep the image small; raise them only when a detail
-    is too small to see."""
+    """The current frame of a camera. Keep the default height/quality; raise them only when the user needs a
+    detail that is too small to see. The server may cap both."""
     _image_allowed(camera)
-    r = _get(f"/api/{camera}/latest.jpg", {"height": height, "quality": quality})
+    r = _get(f"/api/{camera}/latest.jpg", _image_params(height, quality))
     return Image(data=r.content, format="jpeg")
 
 

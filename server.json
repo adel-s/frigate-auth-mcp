@@ -7,13 +7,13 @@
     "url": "https://github.com/adel-s/frigate-auth-mcp",
     "source": "github"
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "frigate-auth-mcp",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -39,6 +39,16 @@
         {
           "name": "FRIGATE_IMAGE_CAMERAS",
           "description": "Cameras allowed to return images, comma-separated; default all",
+          "isRequired": false
+        },
+        {
+          "name": "FRIGATE_IMAGE_MAX_HEIGHT",
+          "description": "Upper limit for the height of returned images, in pixels; default no limit",
+          "isRequired": false
+        },
+        {
+          "name": "FRIGATE_IMAGE_MAX_QUALITY",
+          "description": "Upper limit for the JPEG quality of returned images (1-100); default no limit",
           "isRequired": false
         },
         {

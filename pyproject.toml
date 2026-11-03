@@ -1,6 +1,6 @@
 [project]
 name = "frigate-auth-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server with authentication for Frigate NVR (authenticated port, viewer role)"
 readme = "README.md"
 license = "MIT"
